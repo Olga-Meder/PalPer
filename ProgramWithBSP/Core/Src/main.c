@@ -1,10 +1,28 @@
 /* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2022 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery.h"
+#include "../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_glass_lcd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -98,10 +116,16 @@ int main(void)
   MX_SAI1_Init();
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  BSP_LCD_GLASS_Init();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+  BSP_LCD_GLASS_ScrollSentence((uint8_t *)"      WITAMY W PALPER", 1, SCROLL_SPEED_LOW);
+
+
   while (1)
    {
     /* USER CODE END WHILE */
