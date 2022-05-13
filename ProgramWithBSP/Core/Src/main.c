@@ -23,10 +23,18 @@
 /* USER CODE BEGIN Includes */
 #include "../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery.h"
 #include "../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_glass_lcd.h"
+#include "../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_qspi.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+#define BUFFER_SIZE         ((uint32_t)0x0006)
+#define WRITE_READ_ADDR     ((uint32_t)0x0050)
+#define QSPI_BASE_ADDR      ((uint32_t)0x90000000)
+
+uint8_t qspi_aTxBuffer[BUFFER_SIZE];
+uint8_t qspi_aRxBuffer[BUFFER_SIZE];
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -56,6 +64,29 @@ DMA_HandleTypeDef hdma_sai1_a;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+void Fill_Buffer(uint8_t *pBuffer, uint32_t uwBufferLenght, uint32_t uwOffset) // tymczasowa funkcja do wypełniania bufforu
+{
+  uint32_t tmpIndex = 0;
+  uint32_t znak = 98;
+  /* Put in global buffer different values */
+  for (tmpIndex = 0; tmpIndex < uwBufferLenght; tmpIndex++ )
+  {
+	   pBuffer[tmpIndex] = znak + tmpIndex;
+  }
+}
+
+
+void Fill_Buffer2(uint8_t *pBuffer, uint32_t uwBufferLenght, uint32_t uwOffset)   // tymczasowa funkcja do wypełniania bufforu
+{
+  uint32_t tmpIndex = 0;
+  uint32_t znak = 53;
+  /* Put in global buffer different values */
+  for (tmpIndex = 0; tmpIndex < uwBufferLenght; tmpIndex++ )
+  {
+    pBuffer[tmpIndex] = znak + tmpIndex;
+  }
+}
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -124,6 +155,18 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 
   BSP_LCD_GLASS_ScrollSentence((uint8_t *)"      WITAMY W PALPER", 1, SCROLL_SPEED_LOW);
+
+  static QSPI_Info pQSPI_Info;
+   uint8_t status;
+   status = BSP_QSPI_Init();
+
+   if (status == QSPI_OK) {
+  	  pQSPI_Info.FlashSize          = (uint32_t)0x00;
+  	  pQSPI_Info.EraseSectorSize    = (uint32_t)0x00;
+  	  pQSPI_Info.EraseSectorsNumber = (uint32_t)0x00;
+  	  pQSPI_Info.ProgPageSize       = (uint32_t)0x00;
+  	  pQSPI_Info.ProgPagesNumber    = (uint32_t)0x00;
+   }
 
 
   while (1)
