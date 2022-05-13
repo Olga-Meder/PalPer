@@ -175,6 +175,13 @@ int main(void)
   	  pQSPI_Info.ProgPagesNumber    = (uint32_t)0x00;
    }
 
+   Fill_Buffer(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
+   BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
+
+   Fill_Buffer2(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
+   BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE+BUFFER_SIZE, BUFFER_SIZE);
+
+
    HAL_ADC_Start(&hadc1);
    while (1)
    {
@@ -183,24 +190,22 @@ int main(void)
 	   /* USER CODE BEGIN 3 */
 
 	   if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
-		   PomiarADC = HAL_ADC_GetValue(&hadc1);
+	 		  PomiarADC = HAL_ADC_GetValue(&hadc1);
+
+	 		  if(PomiarADC < 5) {
+	 			  BSP_LCD_GLASS_DisplayString((uint8_t *) "  BRAK  " );
+	 		  }
+	 		  else if(PomiarADC > 5 && PomiarADC < 80) {
+	 			  BSP_QSPI_Read(qspi_aRxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
+	 			  BSP_LCD_GLASS_ScrollSentence(qspi_aRxBuffer, 1, SCROLL_SPEED_HIGH);
+	 		  }
+	 		  else if(PomiarADC > 80) {
+	 			  BSP_QSPI_Read(qspi_aRxBuffer, WRITE_READ_ADDR+BUFFER_SIZE+BUFFER_SIZE, BUFFER_SIZE);
+	 			  BSP_LCD_GLASS_ScrollSentence(qspi_aRxBuffer, 1, SCROLL_SPEED_HIGH);
+	 		  }
+
+	 		  HAL_ADC_Start(&hadc1);
 	   }
-
-		  if(PomiarADC < 5) {
-			  BSP_LCD_GLASS_DisplayString((uint8_t *) "  BRAK  " );
-		  }
-		  else if(PomiarADC > 5 && PomiarADC < 80) {
-			  BSP_LCD_GLASS_DisplayString((uint8_t *) "  100  " );
-		  }
-		  else if(PomiarADC > 80) {
-			  BSP_LCD_GLASS_DisplayString((uint8_t *) " 250  " );
-		  }
-
-
-
-
-	   HAL_ADC_Start(&hadc1);
-
 
 	   /*
 	Fill_Buffer(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
