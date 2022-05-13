@@ -174,6 +174,26 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+	  Fill_Buffer(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
+	  BSP_QSPI_Erase_Block(WRITE_READ_ADDR+BUFFER_SIZE);
+	  BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
+	  BSP_QSPI_Read(qspi_aRxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
+
+	  BSP_LCD_GLASS_ScrollSentence(qspi_aRxBuffer, 1, SCROLL_SPEED_LOW);
+	  HAL_Delay(1000);
+
+	  BSP_LCD_GLASS_ScrollSentence((uint8_t *)"        WYSWIETLANIE POMIEDZY DANYMI", 1, SCROLL_SPEED_HIGH);
+	  HAL_Delay(1000);
+
+	  Fill_Buffer2(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
+	  BSP_QSPI_Erase_Block(WRITE_READ_ADDR+BUFFER_SIZE);
+	  BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE+BUFFER_SIZE, BUFFER_SIZE);
+	  BSP_QSPI_Read(qspi_aRxBuffer, WRITE_READ_ADDR+BUFFER_SIZE+BUFFER_SIZE, BUFFER_SIZE);
+
+	  BSP_LCD_GLASS_ScrollSentence(qspi_aRxBuffer, 1, SCROLL_SPEED_LOW);
+	  HAL_Delay(1000);
+
    }
   /* USER CODE END 3 */
 }
