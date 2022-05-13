@@ -64,6 +64,8 @@ DMA_HandleTypeDef hdma_sai1_a;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+uint8_t PomiarADC;
+
 void Fill_Buffer(uint8_t *pBuffer, uint32_t uwBufferLenght, uint32_t uwOffset) // tymczasowa funkcja do wypełniania bufforu
 {
   uint32_t tmpIndex = 0;
@@ -85,6 +87,11 @@ void Fill_Buffer2(uint8_t *pBuffer, uint32_t uwBufferLenght, uint32_t uwOffset) 
   {
     pBuffer[tmpIndex] = znak + tmpIndex;
   }
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	PomiarADC = HAL_ADC_GetValue(&hadc1); // Pobranie zmierzonej wartosci
 }
 
 /* USER CODE END PV */
