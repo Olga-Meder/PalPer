@@ -29,16 +29,26 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define BUFFER_SIZE         ((uint32_t)0x0006)
-#define WRITE_READ_ADDR     ((uint32_t)0x0050)
-#define QSPI_BASE_ADDR      ((uint32_t)0x90000000)
+//#define BUFFER_SIZE         ((uint32_t)0x0006)
+//#define WRITE_READ_ADDR     ((uint32_t)0x0050)
+//#define QSPI_BASE_ADDR      ((uint32_t)0x90000000)
 
-uint8_t qspi_aTxBuffer[BUFFER_SIZE];
-uint8_t qspi_aRxBuffer[BUFFER_SIZE];
+//uint8_t qspi_aTxBuffer[BUFFER_SIZE];
+//uint8_t qspi_aRxBuffer[BUFFER_SIZE];
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#include <math.h>
+
+#define BUFFER_SIZE		2200
+
+#define AUDIO_I2C_ADDR	0x94
+
+static int16_t audio_data[2 * BUFFER_SIZE];
+
+
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,6 +74,27 @@ DMA_HandleTypeDef hdma_sai1_a;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+
+
+static void cs43l22_write(uint8_t reg, uint8_t value)
+{
+	HAL_I2C_Mem_Write(&hi2c1, AUDIO_I2C_ADDR, reg, 1, &value, sizeof(value), HAL_MAX_DELAY);
+}
+
+static void cs43l22_init(void)
+{
+	HAL_GPIO_WritePin(AUDIO_RST_GPIO_Port, AUDIO_RST_Pin, GPIO_PIN_SET);
+
+	cs43l22_write(0x04, 0xaf);
+	cs43l22_write(0x06, 0x07);
+	cs43l22_write(0x02, 0x9e);
+}
+
+
+
+
+
+
 uint8_t PomiarADC;
 
 void Fill_Buffer(uint8_t *pBuffer, uint32_t uwBufferLenght, uint32_t uwOffset) // tymczasowa funkcja do wypełniania bufforu
@@ -175,19 +206,41 @@ int main(void)
   	  pQSPI_Info.ProgPagesNumber    = (uint32_t)0x00;
    }
 
-   Fill_Buffer(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
-   BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
+ //  Fill_Buffer(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
+ //  BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
 
-   Fill_Buffer2(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
-   BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE+BUFFER_SIZE, BUFFER_SIZE);
+ //  Fill_Buffer2(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
+ //  BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE+BUFFER_SIZE, BUFFER_SIZE);
 
 
-   HAL_ADC_Start(&hadc1);
+ //  HAL_ADC_Start(&hadc1);
+
+
+
+   for (int i = 0; i < BUFFER_SIZE; i++) {
+       int16_t value = (int16_t)(32000.0 * sin(2.0 * M_PI * i / 22.0));
+       audio_data[i * 2] = value;
+       audio_data[i * 2 + 1] = value;
+   }
+
+   cs43l22_init();
+
    while (1)
    {
-	   /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-	   /* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
+
+
+	   HAL_SAI_Transmit(&hsai_BlockA1, (uint16_t *) audio_data, 2*BUFFER_SIZE, HAL_MAX_DELAY);
+
+
+
+
+
+
+
+	   /*
 
 	   if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
 	 		  PomiarADC = HAL_ADC_GetValue(&hadc1);
@@ -207,7 +260,7 @@ int main(void)
 	 		  HAL_ADC_Start(&hadc1);
 	   }
 
-	   /*
+
 	Fill_Buffer(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
 	BSP_QSPI_Erase_Block(WRITE_READ_ADDR+BUFFER_SIZE);
 	BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
@@ -296,7 +349,7 @@ void PeriphCommonClock_Config(void)
   PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_PLLSAI1;
   PeriphClkInit.PLLSAI1.PLLSAI1Source = RCC_PLLSOURCE_HSI;
   PeriphClkInit.PLLSAI1.PLLSAI1M = 1;
-  PeriphClkInit.PLLSAI1.PLLSAI1N = 8;
+  PeriphClkInit.PLLSAI1.PLLSAI1N = 10;
   PeriphClkInit.PLLSAI1.PLLSAI1P = RCC_PLLP_DIV7;
   PeriphClkInit.PLLSAI1.PLLSAI1Q = RCC_PLLQ_DIV2;
   PeriphClkInit.PLLSAI1.PLLSAI1R = RCC_PLLR_DIV2;
@@ -563,30 +616,17 @@ static void MX_SAI1_Init(void)
   /* USER CODE BEGIN SAI1_Init 1 */
   /* USER CODE END SAI1_Init 1 */
   hsai_BlockA1.Instance = SAI1_Block_A;
-  hsai_BlockA1.Init.Protocol = SAI_FREE_PROTOCOL;
   hsai_BlockA1.Init.AudioMode = SAI_MODEMASTER_TX;
-  hsai_BlockA1.Init.DataSize = SAI_DATASIZE_16;
-  hsai_BlockA1.Init.FirstBit = SAI_FIRSTBIT_MSB;
-  hsai_BlockA1.Init.ClockStrobing = SAI_CLOCKSTROBING_FALLINGEDGE;
   hsai_BlockA1.Init.Synchro = SAI_ASYNCHRONOUS;
   hsai_BlockA1.Init.OutputDrive = SAI_OUTPUTDRIVE_DISABLE;
   hsai_BlockA1.Init.NoDivider = SAI_MASTERDIVIDER_ENABLE;
   hsai_BlockA1.Init.FIFOThreshold = SAI_FIFOTHRESHOLD_EMPTY;
-  hsai_BlockA1.Init.AudioFrequency = SAI_AUDIO_FREQUENCY_192K;
+  hsai_BlockA1.Init.AudioFrequency = SAI_AUDIO_FREQUENCY_22K;
   hsai_BlockA1.Init.SynchroExt = SAI_SYNCEXT_DISABLE;
   hsai_BlockA1.Init.MonoStereoMode = SAI_STEREOMODE;
   hsai_BlockA1.Init.CompandingMode = SAI_NOCOMPANDING;
   hsai_BlockA1.Init.TriState = SAI_OUTPUT_NOTRELEASED;
-  hsai_BlockA1.FrameInit.FrameLength = 32;
-  hsai_BlockA1.FrameInit.ActiveFrameLength = 1;
-  hsai_BlockA1.FrameInit.FSDefinition = SAI_FS_STARTFRAME;
-  hsai_BlockA1.FrameInit.FSPolarity = SAI_FS_ACTIVE_LOW;
-  hsai_BlockA1.FrameInit.FSOffset = SAI_FS_FIRSTBIT;
-  hsai_BlockA1.SlotInit.FirstBitOffset = 0;
-  hsai_BlockA1.SlotInit.SlotSize = SAI_SLOTSIZE_16B;
-  hsai_BlockA1.SlotInit.SlotNumber = 1;
-  hsai_BlockA1.SlotInit.SlotActive = 0x00000000;
-  if (HAL_SAI_Init(&hsai_BlockA1) != HAL_OK)
+  if (HAL_SAI_InitProtocol(&hsai_BlockA1, SAI_I2S_STANDARD, SAI_PROTOCOL_DATASIZE_16BIT, 2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -654,13 +694,14 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, AUDIO_RST_Pin|LD_G_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(AUDIO_RST_GPIO_Port, AUDIO_RST_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(DIGITIZER_OUT_X1_GPIO_Port, DIGITIZER_OUT_X1_Pin, GPIO_PIN_SET);
@@ -670,6 +711,9 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD_R_GPIO_Port, LD_R_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LD_G_GPIO_Port, LD_G_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : AUDIO_RST_Pin */
   GPIO_InitStruct.Pin = AUDIO_RST_Pin;
