@@ -40,7 +40,9 @@ Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_audio.o: \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_rtc_ex.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_sai.h \
  ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart.h \
- ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h
+ ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h \
+ ../Drivers/BSP/STM32L476G-Discovery/../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_qspi.h \
+ c:\users\tomas\stm32cubeide\workspace_1.9.0\programwithbsp\drivers\bsp\components\n25q128a\n25q128a.h
 ../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_audio.h:
 ../Drivers/BSP/STM32L476G-Discovery/../Components/cs43l22/cs43l22.h:
 ../Drivers/BSP/STM32L476G-Discovery/../Components/cs43l22/../Common/audio.h:
@@ -82,3 +84,5 @@ Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_audio.o: \
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_sai.h:
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart.h:
 ../Drivers/STM32L4xx_HAL_Driver/Inc/stm32l4xx_hal_uart_ex.h:
+../Drivers/BSP/STM32L476G-Discovery/../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_qspi.h:
+c:\users\tomas\stm32cubeide\workspace_1.9.0\programwithbsp\drivers\bsp\components\n25q128a\n25q128a.h:

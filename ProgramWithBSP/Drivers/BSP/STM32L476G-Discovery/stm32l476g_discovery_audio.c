@@ -108,6 +108,7 @@ b) RECORD A FILE:
 /* Includes ------------------------------------------------------------------*/
 #include <string.h>
 #include "stm32l476g_discovery_audio.h"
+#include "../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_qspi.h"
 
 /** @addtogroup BSP
   * @{
@@ -158,7 +159,10 @@ typedef struct
 /** @defgroup STM32L476G_DISCOVERY_AUDIO_Private_Constants Private Constants
   * @{
   */
+uint8_t Music_buffor[44144];
+
 /**
+ *
   * @}
   */
 
@@ -355,18 +359,20 @@ uint8_t BSP_AUDIO_OUT_DeInit(void)
 uint8_t BSP_AUDIO_OUT_Play(uint16_t *pData, uint32_t Size)
 {
   /* Initiate a DMA transfer of PCM samples towards the serial audio interface */
-  if (HAL_SAI_Transmit_DMA(&BSP_AUDIO_hSai, (uint8_t *)pData, DMA_MAX(Size)) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
+
+	BSP_QSPI_Read(Music_buffor,(uint32_t) pData, DMA_MAX(Size));
+	if (HAL_SAI_Transmit_DMA(&BSP_AUDIO_hSai, Music_buffor ,DMA_MAX(Size)) != HAL_OK)
+	{
+		return AUDIO_ERROR;
+	}
 
   /* Call the audio Codec Play function */
-  if (hAudioOut.AudioDrv->Play(AUDIO_I2C_ADDRESS, pData, Size) != 0)
-  {
-    return AUDIO_ERROR;
-  }
+	if (hAudioOut.AudioDrv->Play(AUDIO_I2C_ADDRESS, (uint16_t *) Music_buffor, Size) != 0)
+	{
+		return AUDIO_ERROR;
+	}
 
-  return AUDIO_OK;
+	return AUDIO_OK;
 }
 
 /**
@@ -378,10 +384,12 @@ uint8_t BSP_AUDIO_OUT_Play(uint16_t *pData, uint32_t Size)
 uint8_t BSP_AUDIO_OUT_ChangeBuffer(uint16_t *pData, uint16_t Size)
 {
   /* Initiate a DMA transfer of PCM samples towards the serial audio interface */
-  if (HAL_SAI_Transmit_DMA(&BSP_AUDIO_hSai, (uint8_t *)pData, Size) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
+
+	BSP_QSPI_Read(Music_buffor, (uint32_t)pData, Size);
+	if (HAL_SAI_Transmit_DMA(&BSP_AUDIO_hSai, Music_buffor, Size) != HAL_OK)
+	{
+		return AUDIO_ERROR;
+	}
 
   return AUDIO_OK;
 }
