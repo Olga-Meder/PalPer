@@ -367,7 +367,7 @@ uint8_t BSP_AUDIO_OUT_Play(uint16_t *pData, uint32_t Size)
 	}
 
   /* Call the audio Codec Play function */
-	if (hAudioOut.AudioDrv->Play(AUDIO_I2C_ADDRESS, (uint16_t *) Music_buffor, Size) != 0)
+	if (hAudioOut.AudioDrv->Play(AUDIO_I2C_ADDRESS, (uint16_t *) Music_buffor, (uint16_t) Size) != 0)
 	{
 		return AUDIO_ERROR;
 	}
@@ -381,7 +381,7 @@ uint8_t BSP_AUDIO_OUT_Play(uint16_t *pData, uint32_t Size)
   * @param  Size: number of data to be written
   * @retval BSP AUDIO status
   */
-uint8_t BSP_AUDIO_OUT_ChangeBuffer(uint16_t *pData, uint16_t Size)
+uint8_t BSP_AUDIO_OUT_ChangeBuffer(uint32_t *pData, uint16_t Size)
 {
   /* Initiate a DMA transfer of PCM samples towards the serial audio interface */
 
@@ -1033,87 +1033,7 @@ static uint8_t AUDIO_SAIx_DeInit(void)
   return AUDIO_OK;
 }
 
-/**
-  * @brief  SAI MSP Init
-  * @param  hsai : pointer to a SAI_HandleTypeDef structure
-  * @retval None
-  */
-void HAL_SAI_MspInit(SAI_HandleTypeDef *hsai)
-{
-  GPIO_InitTypeDef  GPIO_InitStruct;
 
-  /* Enable SAI clock */
-  AUDIO_SAIx_CLK_ENABLE();
-
-  /* Enable GPIO clock */
-  AUDIO_SAIx_MCK_SCK_SD_FS_ENABLE();
-
-  /* CODEC_SAI pins configuration: FS, SCK, MCK and SD pins ------------------*/
-  GPIO_InitStruct.Pin = AUDIO_SAIx_FS_PIN | AUDIO_SAIx_SCK_PIN | AUDIO_SAIx_SD_PIN | AUDIO_SAIx_MCK_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = AUDIO_SAIx_MCK_SCK_SD_FS_AF;
-  HAL_GPIO_Init(AUDIO_SAIx_MCK_SCK_SD_FS_GPIO_PORT, &GPIO_InitStruct);
-
-  /* Enable the DMA clock */
-  AUDIO_SAIx_DMAx_CLK_ENABLE();
-
-  if (hsai->Instance == AUDIO_SAIx)
-  {
-    /* Configure the hDmaSai handle parameters */
-    hDmaSai.Init.Request             = DMA_REQUEST_1;
-    hDmaSai.Init.Direction           = DMA_MEMORY_TO_PERIPH;
-    hDmaSai.Init.PeriphInc           = DMA_PINC_DISABLE;
-    hDmaSai.Init.MemInc              = DMA_MINC_ENABLE;
-    hDmaSai.Init.PeriphDataAlignment = AUDIO_SAIx_DMAx_PERIPH_DATA_SIZE;
-    hDmaSai.Init.MemDataAlignment    = AUDIO_SAIx_DMAx_MEM_DATA_SIZE;
-    hDmaSai.Init.Mode                = DMA_NORMAL;
-    hDmaSai.Init.Priority            = DMA_PRIORITY_HIGH;
-
-    hDmaSai.Instance = AUDIO_SAIx_DMAx_CHANNEL;
-
-    /* Associate the DMA handle */
-    __HAL_LINKDMA(hsai, hdmatx, hDmaSai);
-
-    /* Deinitialize the Stream for new transfer */
-    HAL_DMA_DeInit(&hDmaSai);
-
-    /* Configure the DMA Stream */
-    HAL_DMA_Init(&hDmaSai);
-  }
-
-  /* SAI DMA IRQ Channel configuration */
-  HAL_NVIC_SetPriority(AUDIO_SAIx_DMAx_IRQ, AUDIO_OUT_IRQ_PREPRIO, 0);
-  HAL_NVIC_EnableIRQ(AUDIO_SAIx_DMAx_IRQ);
-}
-
-/**
-  * @brief  SAI MSP De-init
-  * @param  hsai : pointer to a SAI_HandleTypeDef structure
-  * @retval None
-  */
-void HAL_SAI_MspDeInit(SAI_HandleTypeDef *hsai)
-{
-  /* Disable SAI DMA Channel IRQ  */
-  HAL_NVIC_DisableIRQ(AUDIO_SAIx_DMAx_IRQ);
-
-  /* Reset the DMA Stream configuration*/
-  HAL_DMA_DeInit(&hDmaSai);
-
-  /* Disable the DMA clock */
-  AUDIO_SAIx_DMAx_CLK_DISABLE();
-
-  /* De-initialize FS, SCK, MCK and SD pins*/
-  HAL_GPIO_DeInit(AUDIO_SAIx_MCK_SCK_SD_FS_GPIO_PORT,
-                  AUDIO_SAIx_FS_PIN | AUDIO_SAIx_SCK_PIN | AUDIO_SAIx_SD_PIN | AUDIO_SAIx_MCK_PIN);
-
-  /* Disable GPIO clock */
-  AUDIO_SAIx_MCK_SCK_SD_FS_DISABLE();
-
-  /* Disable SAI clock */
-  AUDIO_SAIx_CLK_DISABLE();
-}
 
 /**
   * @brief  Resets the audio codec. It restores the default configuration of the
@@ -1232,55 +1152,6 @@ static uint8_t AUDIO_DFSDMx_DeInit(void)
   __HAL_RCC_DFSDM1_RELEASE_RESET();
 
   return AUDIO_OK;
-}
-
-/**
-  * @brief  Initializes the DFSDM channel MSP.
-  * @param  hdfsdm_channel : DFSDM channel handle.
-  * @retval None
-  */
-void HAL_DFSDM_ChannelMspInit(DFSDM_Channel_HandleTypeDef *hdfsdm_channel)
-{
-  GPIO_InitTypeDef  GPIO_InitStruct;
-
-  /* Enable DFSDM clock */
-  AUDIO_DFSDMx_CLK_ENABLE();
-
-  /* Enable GPIO clock */
-  AUDIO_DFSDMx_CKOUT_DMIC_DATIN_GPIO_CLK_ENABLE();
-
-  /* DFSDM pins configuration: DFSDM_CKOUT, DMIC_DATIN pins ------------------*/
-  GPIO_InitStruct.Pin = AUDIO_DFSDMx_CKOUT_PIN | AUDIO_DFSDMx_DMIC_DATIN_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = AUDIO_DFSDMx_CKOUT_DMIC_DATIN_AF;
-  HAL_GPIO_Init(AUDIO_DFSDMx_CKOUT_DMIC_DATIN_GPIO_PORT, &GPIO_InitStruct);
-}
-
-/**
-  * @brief  De-initializes the DFSDM channel MSP.
-  * @param  hdfsdm_channel : DFSDM channel handle.
-  * @retval None
-  */
-void HAL_DFSDM_ChannelMspDeInit(DFSDM_Channel_HandleTypeDef *hdfsdm_channel)
-{
-  GPIO_InitTypeDef  GPIO_InitStruct;
-
-  /* Enable GPIO clock */
-  AUDIO_DFSDMx_CKOUT_DMIC_DATIN_GPIO_CLK_ENABLE();
-
-  /* DFSDM pins configuration: DFSDM_CKOUT */
-  GPIO_InitStruct.Pin = AUDIO_DFSDMx_CKOUT_PIN;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(AUDIO_DFSDMx_CKOUT_DMIC_DATIN_GPIO_PORT, &GPIO_InitStruct);
-  HAL_GPIO_WritePin(AUDIO_DFSDMx_CKOUT_DMIC_DATIN_GPIO_PORT, AUDIO_DFSDMx_CKOUT_PIN, GPIO_PIN_RESET);
-
-
-  /* De-initialize DMIC_DATIN pin */
-  HAL_GPIO_DeInit(AUDIO_DFSDMx_CKOUT_DMIC_DATIN_GPIO_PORT, AUDIO_DFSDMx_DMIC_DATIN_PIN);
 }
 
 /**

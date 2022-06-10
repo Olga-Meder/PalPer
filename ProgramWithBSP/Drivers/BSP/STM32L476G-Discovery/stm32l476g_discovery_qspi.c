@@ -871,6 +871,8 @@ static uint8_t QSPI_AutoPollingMemReady(QSPI_HandleTypeDef *hqspi, uint32_t Time
   return QSPI_OK;
 }
 
+
+
 /**
   * @}
   */

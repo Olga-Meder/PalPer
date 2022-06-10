@@ -151,7 +151,7 @@ typedef void (*Audio_CallbackTypeDef)(void);
              CONFIGURATION: Audio Driver Configuration parameters
 ------------------------------------------------------------------------------*/
 
-#define AUDIODATA_SIZE                      2   /* 16-bits audio data size */
+#define AUDIODATA_SIZE                      1   /* 16-bits audio data size */
 
 /* Audio status definition */
 #define AUDIO_OK                            0
@@ -201,7 +201,7 @@ extern DFSDM_Filter_HandleTypeDef BSP_AUDIO_hDfsdmLeftFilter;
 uint8_t BSP_AUDIO_OUT_Init(uint16_t OutputDevice, uint8_t Volume, uint32_t AudioFreq);
 uint8_t BSP_AUDIO_OUT_DeInit(void);
 uint8_t BSP_AUDIO_OUT_Play(uint16_t *pData, uint32_t Size);
-uint8_t BSP_AUDIO_OUT_ChangeBuffer(uint16_t *pData, uint16_t Size);
+uint8_t BSP_AUDIO_OUT_ChangeBuffer(uint32_t *pData, uint16_t Size);
 uint8_t BSP_AUDIO_OUT_Pause(void);
 uint8_t BSP_AUDIO_OUT_Resume(void);
 uint8_t BSP_AUDIO_OUT_Stop(uint32_t Option);

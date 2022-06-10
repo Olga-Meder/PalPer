@@ -31,8 +31,9 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#define BUFFER_SIZE        	1     //((uint32_t)0x0006)
-#define WRITE_READ_ADDR     ((uint32_t)0x0050)
+
+#define BUFFER_SIZE        	1
+#define WRITE_READ_ADDR     ((uint32_t)0x00100000)
 #define QSPI_BASE_ADDR      ((uint32_t)0x90000000)
 
 uint8_t qspi_aTxBuffer[BUFFER_SIZE];
@@ -42,19 +43,12 @@ uint8_t qspi_aRxBuffer[4];
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-//#include <math.h>
-//#define BUFFER_SIZE		2200
-//#define AUDIO_I2C_ADDR	0x94
-//static int16_t audio_data[2 * BUFFER_SIZE];
-
-
 
 typedef enum {
   AUDIO_DEMO_NONE = 0,
   AUDIO_DEMO_PLAYBACK,
   AUDIO_DEMO_RECORD
 } Audio_DemoTypeDef;
-
 Audio_DemoTypeDef AudioDemo = AUDIO_DEMO_NONE;
 
 typedef struct
@@ -75,20 +69,26 @@ typedef struct
 } WavHeaderTypeDef;
 
 
+//1.open -> sektor 16
+//2.trade -> sektor 17
+//3.cymbal -> sektor 18
+//4.kick2 -> sektor 19
+//5.wood -> sektor 20
+//6.snare -> sektor 21
+
+
+
 void AudioPlay_Error_CallBack(void)
 {
   /* Stop the program with an infinite loop */
   Error_Handler();
 }
 
-/* Size (in bytes) of the audio file */
+/* Size (in bytes) of each audio file */
 #define AUDIO_FILE_SIZE      (uint32_t)(44144)
 
-/* Address of the first audio sample in FLASH memory*/
+/* Address of the first audio in FLASH memory*/
 #define AUDIO_START_ADDRESS  WRITE_READ_ADDR
-
-/* Address of the last audio sample in FLASH memory*/
-#define AUDIO_END_ADDRESS    (uint32_t)(AUDIO_START_ADDRESS + AUDIO_FILE_SIZE)
 
 #define AUDIODATA_SIZE                      1
 
@@ -98,29 +98,11 @@ static int32_t RemainingAudioSamplesNb;
 /* Address (in Flash memory) of the first audio sample to play */
 static uint16_t *pAudioSample;
 
+static uint32_t RozmiarSekcji = 65536;
 
 void AudioPlay_TransferComplete_CallBack()
 {
-  uint32_t replay = 0;
 
-  if (AudioDemo == AUDIO_DEMO_PLAYBACK)
-  {
-    /* Update the current pointer position */
-    pAudioSample += DMA_MAX(RemainingAudioSamplesNb);
-
-    /* Update the remaining number of data to be played */
-    RemainingAudioSamplesNb = (AUDIO_END_ADDRESS - (uint32_t)pAudioSample)/AUDIODATA_SIZE;
-
-    if (RemainingAudioSamplesNb > 0)
-    {
-      /* Replay from the current position */
-      if (BSP_AUDIO_OUT_ChangeBuffer(pAudioSample,
-                                     DMA_MAX(RemainingAudioSamplesNb)) != 0)
-      {
-        Error_Handler();
-      }
-    }
-  }
 }
 
 
@@ -157,7 +139,7 @@ void Fill_Buffer(uint8_t *pBuffer, uint32_t uwBufferLenght, uint32_t petla) { //
   /* Put in global buffer different values */
   for (tmpIndex = 0; tmpIndex < uwBufferLenght; tmpIndex++ )
   {
-	//  pBuffer[tmpIndex] = hex_array[petla];
+	  pBuffer[tmpIndex] = hex_array[petla];
   }
 }
 
@@ -246,54 +228,31 @@ int main(void)
 	  pQSPI_Info.ProgPagesNumber    = (uint32_t)0x00;
   }
 
- //  Fill_Buffer(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
- //  BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
-
- //  Fill_Buffer2(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
- //  BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE+BUFFER_SIZE, BUFFER_SIZE);
-
-
  //  HAL_ADC_Start(&hadc1);
 
-/*
-
-   for (int i = 0; i < BUFFER_SIZE; i++) {
-       int16_t value = (int16_t)(32000.0 * sin(2.0 * M_PI * i / 22.0));
-       audio_data[i * 2] = value;
-       audio_data[i * 2 + 1] = value;
-   }
-
-   cs43l22_init();
-   uint8_t id = cs43l22_read(0x01);
- */
-
-//  BSP_QSPI_Erase_Sector(0);
-//  BSP_QSPI_Erase_Sector(1);
-
-//  for (uint32_t i = 0; i < 44144; i++){                        //1.clap -> 44144    2.tom -> 44144
+//  for (uint32_t i = 0; i < AUDIO_FILE_SIZE; i++) {
 //	  Fill_Buffer(qspi_aTxBuffer, BUFFER_SIZE,i);
-//	  BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+(BUFFER_SIZE*i), BUFFER_SIZE);
+//	  BSP_QSPI_Write(qspi_aTxBuffer, ((WRITE_READ_ADDR+(RozmiarSekcji*5))+(BUFFER_SIZE*i)), BUFFER_SIZE);
 //  }
 
   HAL_GPIO_TogglePin(LED4_GPIO_PORT, LED4_PIN);
-  BSP_QSPI_Read(qspi_aRxBuffer, WRITE_READ_ADDR, 4);
+  BSP_QSPI_Read(qspi_aRxBuffer, (WRITE_READ_ADDR+(RozmiarSekcji*0)), 4);
   BSP_LCD_GLASS_DisplayString((uint8_t *) qspi_aRxBuffer);
-  HAL_Delay(1000);
 
 
   /* Audio playback demo is running */
   AudioDemo = AUDIO_DEMO_PLAYBACK;
 
   /* Set the remaining number of data to be played */
-  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / AUDIODATA_SIZE);
+  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
 
   /* Set the pointer to the first audio sample to play */
-  pAudioSample = (uint16_t *) AUDIO_START_ADDRESS;
+  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * 3));
 
 
-  if(BSP_AUDIO_OUT_Init(2,
-                        70,
-                        44100) != 0)
+  if(BSP_AUDIO_OUT_Init(2,  // Słuchawki
+                        60, // %głośności
+                        44100) != 0)  // częstotliwość
   {
 	  BSP_LCD_GLASS_DisplayString((uint8_t *)"UMI 1");
 		  Error_Handler();
@@ -303,39 +262,28 @@ int main(void)
                                   NULL,
                                   AudioPlay_TransferComplete_CallBack);
 
-  if(BSP_AUDIO_OUT_SetVolume(70) != 0)
+  if(BSP_AUDIO_OUT_SetVolume(60) != 0)
   {
 	  BSP_LCD_GLASS_DisplayString((uint8_t *)"UMI 2");
 	  Error_Handler();
   }
 
 
-  if(BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb) != AUDIO_OK)
-	   {
-	 	  BSP_LCD_GLASS_DisplayString((uint8_t *)"UMI 3");
-	 	  Error_Handler();
-	   }
+//  if(BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb) != AUDIO_OK)
+//	   {
+//	 	  BSP_LCD_GLASS_DisplayString((uint8_t *)"UMI 3");
+//	 	  Error_Handler();
+//	   }
 
-
+	  HAL_Delay(1000);
+  HAL_Delay(2000);
+//  BSP_AUDIO_OUT_Stop(2);
 
    while (1)
    {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-
-
-
-
-
-
-
-
-
-
-
-	//   HAL_SAI_Transmit(&hsai_BlockA1, (uint16_t *) audio_data, 2*BUFFER_SIZE, HAL_MAX_DELAY);
 
 
 	   /*
@@ -357,26 +305,6 @@ int main(void)
 
 	 		  HAL_ADC_Start(&hadc1);
 	   }
-
-
-	Fill_Buffer(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
-	BSP_QSPI_Erase_Block(WRITE_READ_ADDR+BUFFER_SIZE);
-	BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
-	BSP_QSPI_Read(qspi_aRxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
-
-	BSP_LCD_GLASS_ScrollSentence(qspi_aRxBuffer, 1, SCROLL_SPEED_LOW);
-	HAL_Delay(1000);
-
-  	BSP_LCD_GLASS_ScrollSentence((uint8_t *)"        WYSWIETLANIE POMIEDZY DANYMI", 1, SCROLL_SPEED_HIGH);
-	HAL_Delay(1000);
-
-	Fill_Buffer2(qspi_aTxBuffer, BUFFER_SIZE, 0xD20F);
-	BSP_QSPI_Erase_Block(WRITE_READ_ADDR+BUFFER_SIZE);
-	BSP_QSPI_Write(qspi_aTxBuffer, WRITE_READ_ADDR+BUFFER_SIZE+BUFFER_SIZE, BUFFER_SIZE);
-	BSP_QSPI_Read(qspi_aRxBuffer, WRITE_READ_ADDR+BUFFER_SIZE+BUFFER_SIZE, BUFFER_SIZE);
-
-	BSP_LCD_GLASS_ScrollSentence(qspi_aRxBuffer, 1, SCROLL_SPEED_LOW);
-	HAL_Delay(1000);
 	    */
    }
   /* USER CODE END 3 */
