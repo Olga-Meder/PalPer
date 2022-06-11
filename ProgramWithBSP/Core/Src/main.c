@@ -43,32 +43,6 @@ uint8_t qspi_aRxBuffer[4];
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-
-typedef enum {
-  AUDIO_DEMO_NONE = 0,
-  AUDIO_DEMO_PLAYBACK,
-  AUDIO_DEMO_RECORD
-} Audio_DemoTypeDef;
-Audio_DemoTypeDef AudioDemo = AUDIO_DEMO_NONE;
-
-typedef struct
-{
-  char       RIFF[4];          /* 0 */
-  uint32_t   ChunkSize;        /* 4 */
-  char       WAVE[4];          /* 8 */
-  char       fmt[4];           /* 12 */
-  uint32_t   SubChunk1Size;    /* 16*/
-  uint16_t   AudioFormat;      /* 20 */
-  uint16_t   NbrChannels;      /* 22 */
-  uint32_t   SampleRate;       /* 24 */
-  uint32_t   ByteRate;         /* 28 */
-  uint16_t   BlockAlign;       /* 32 */
-  uint16_t   BitPerSample;     /* 34 */
-  char       SubChunk2ID[4];   /* 36 */
-  uint32_t   SubChunk2Size;    /* 40 */
-} WavHeaderTypeDef;
-
-
 //1.open -> sektor 16
 //2.trade -> sektor 17
 //3.cymbal -> sektor 18
@@ -76,7 +50,19 @@ typedef struct
 //5.wood -> sektor 20
 //6.snare -> sektor 21
 
+//7.clap -> sektor 22
+//8.tom -> sektor 23
+//9.hihat -> sektor 24
+//10.kick -> sektor 25
+//11.hihatModular -> sektor 26
+//12.kick2 -> sektor 27
 
+//13.cowbell -> sektor 28
+//14.egg -> sektor 29
+//15.cabasa -> sektor 30
+//16.congaLov -> sektor 31
+//17.clave -> sektor 32
+//18.congaHigh -> sektor 33
 
 void AudioPlay_Error_CallBack(void)
 {
@@ -90,7 +76,7 @@ void AudioPlay_Error_CallBack(void)
 /* Address of the first audio in FLASH memory*/
 #define AUDIO_START_ADDRESS  WRITE_READ_ADDR
 
-#define AUDIODATA_SIZE                      1
+#define AUDIODATA_SIZE                      2
 
 /* Remainig number of audio samples to play */
 static int32_t RemainingAudioSamplesNb;
@@ -102,9 +88,7 @@ static uint32_t RozmiarSekcji = 65536;
 
 void AudioPlay_TransferComplete_CallBack()
 {
-
 }
-
 
 /* USER CODE END PD */
 
@@ -114,8 +98,6 @@ void AudioPlay_TransferComplete_CallBack()
 
 /* Private variables ---------------------------------------------------------*/
  ADC_HandleTypeDef hadc1;
-
-DFSDM_Channel_HandleTypeDef hdfsdm1_channel0;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -134,14 +116,6 @@ UART_HandleTypeDef huart3;
 
 
 uint8_t PomiarADC;
-void Fill_Buffer(uint8_t *pBuffer, uint32_t uwBufferLenght, uint32_t petla) { // tymczasowa funkcja do wypełniania bufforu
-  uint32_t tmpIndex = 0;
-  /* Put in global buffer different values */
-  for (tmpIndex = 0; tmpIndex < uwBufferLenght; tmpIndex++ )
-  {
-	  pBuffer[tmpIndex] = hex_array[petla];
-  }
-}
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	PomiarADC = HAL_ADC_GetValue(&hadc1); // Pobranie zmierzonej wartosci
@@ -155,7 +129,6 @@ void PeriphCommonClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_LCD_Init(void);
 static void MX_QUADSPI_Init(void);
-static void MX_DFSDM1_Init(void);
 static void MX_RTC_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_DMA_Init(void);
@@ -189,7 +162,7 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-/* Configure the peripherals common clocks */
+  /* Configure the peripherals common clocks */
   PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
@@ -199,7 +172,6 @@ int main(void)
   MX_GPIO_Init();
   MX_LCD_Init();
   MX_QUADSPI_Init();
-  MX_DFSDM1_Init();
   MX_RTC_Init();
   MX_I2C1_Init();
   MX_DMA_Init();
@@ -214,12 +186,11 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
- // BSP_LCD_GLASS_ScrollSentence((uint8_t *)"      WITAMY W PALPER", 1, SCROLL_SPEED_HIGH);
+  BSP_LCD_GLASS_ScrollSentence((uint8_t *)"      WITAMY W PALPER", 1, SCROLL_SPEED_HIGH);
 
   static QSPI_Info pQSPI_Info;
   uint8_t status;
   status = BSP_QSPI_Init();
-
   if (status == QSPI_OK) {
 	  pQSPI_Info.FlashSize          = (uint32_t)0x00;
 	  pQSPI_Info.EraseSectorSize    = (uint32_t)0x00;
@@ -228,85 +199,48 @@ int main(void)
 	  pQSPI_Info.ProgPagesNumber    = (uint32_t)0x00;
   }
 
- //  HAL_ADC_Start(&hadc1);
-
-//  for (uint32_t i = 0; i < AUDIO_FILE_SIZE; i++) {
-//	  Fill_Buffer(qspi_aTxBuffer, BUFFER_SIZE,i);
-//	  BSP_QSPI_Write(qspi_aTxBuffer, ((WRITE_READ_ADDR+(RozmiarSekcji*5))+(BUFFER_SIZE*i)), BUFFER_SIZE);
-//  }
-
-  HAL_GPIO_TogglePin(LED4_GPIO_PORT, LED4_PIN);
-  BSP_QSPI_Read(qspi_aRxBuffer, (WRITE_READ_ADDR+(RozmiarSekcji*0)), 4);
-  BSP_LCD_GLASS_DisplayString((uint8_t *) qspi_aRxBuffer);
-
-
-  /* Audio playback demo is running */
-  AudioDemo = AUDIO_DEMO_PLAYBACK;
-
-  /* Set the remaining number of data to be played */
-  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-
-  /* Set the pointer to the first audio sample to play */
-  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * 3));
-
-
   if(BSP_AUDIO_OUT_Init(2,  // Słuchawki
-                        60, // %głośności
+                        100, // %głośności
                         44100) != 0)  // częstotliwość
   {
-	  BSP_LCD_GLASS_DisplayString((uint8_t *)"UMI 1");
 		  Error_Handler();
   }
 
   BSP_AUDIO_OUT_RegisterCallbacks(AudioPlay_Error_CallBack,
-                                  NULL,
+              	  	  	  	  	  NULL,
                                   AudioPlay_TransferComplete_CallBack);
 
-  if(BSP_AUDIO_OUT_SetVolume(60) != 0)
+  if(BSP_AUDIO_OUT_SetVolume(100) != 0)
   {
-	  BSP_LCD_GLASS_DisplayString((uint8_t *)"UMI 2");
 	  Error_Handler();
   }
 
+  int flag = 1;
+  int flag2 = 1;
+  uint32_t count = 0;
+  HAL_ADC_Start(&hadc1);
 
-//  if(BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb) != AUDIO_OK)
-//	   {
-//	 	  BSP_LCD_GLASS_DisplayString((uint8_t *)"UMI 3");
-//	 	  Error_Handler();
-//	   }
-
-	  HAL_Delay(1000);
-  HAL_Delay(2000);
-//  BSP_AUDIO_OUT_Stop(2);
-
-   while (1)
-   {
-    /* USER CODE END WHILE */
+  while (1)
+  {
+	/* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 
+	  if(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin) && flag){
+		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * count));
+		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+		  HAL_Delay(500);
+		  BSP_AUDIO_OUT_Stop(2);
+		  count++;
+		  flag = 0;
+		  count = count % 18;
+	  }
+	  if(!(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin))){
+		  flag = 1;
+	  }
 
-	   /*
-
-	   if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
-	 		  PomiarADC = HAL_ADC_GetValue(&hadc1);
-
-	 		  if(PomiarADC < 5) {
-	 			  BSP_LCD_GLASS_DisplayString((uint8_t *) "  BRAK  " );
-	 		  }
-	 		  else if(PomiarADC > 5 && PomiarADC < 80) {
-	 			  BSP_QSPI_Read(qspi_aRxBuffer, WRITE_READ_ADDR+BUFFER_SIZE, BUFFER_SIZE);
-	 			  BSP_LCD_GLASS_ScrollSentence(qspi_aRxBuffer, 1, SCROLL_SPEED_HIGH);
-	 		  }
-	 		  else if(PomiarADC > 80) {
-	 			  BSP_QSPI_Read(qspi_aRxBuffer, WRITE_READ_ADDR+BUFFER_SIZE+BUFFER_SIZE, BUFFER_SIZE);
-	 			  BSP_LCD_GLASS_ScrollSentence(qspi_aRxBuffer, 1, SCROLL_SPEED_HIGH);
-	 		  }
-
-	 		  HAL_ADC_Start(&hadc1);
-	   }
-	    */
-   }
+  }
   /* USER CODE END 3 */
 }
 
@@ -447,41 +381,6 @@ static void MX_ADC1_Init(void)
   }
   /* USER CODE BEGIN ADC1_Init 2 */
   /* USER CODE END ADC1_Init 2 */
-
-}
-
-/**
-  * @brief DFSDM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_DFSDM1_Init(void)
-{
-
-  /* USER CODE BEGIN DFSDM1_Init 0 */
-  /* USER CODE END DFSDM1_Init 0 */
-
-  /* USER CODE BEGIN DFSDM1_Init 1 */
-  /* USER CODE END DFSDM1_Init 1 */
-  hdfsdm1_channel0.Instance = DFSDM1_Channel0;
-  hdfsdm1_channel0.Init.OutputClock.Activation = DISABLE;
-  hdfsdm1_channel0.Init.OutputClock.Selection = DFSDM_CHANNEL_OUTPUT_CLOCK_SYSTEM;
-  hdfsdm1_channel0.Init.OutputClock.Divider = 2;
-  hdfsdm1_channel0.Init.Input.Multiplexer = DFSDM_CHANNEL_INTERNAL_REGISTER;
-  hdfsdm1_channel0.Init.Input.DataPacking = DFSDM_CHANNEL_STANDARD_MODE;
-  hdfsdm1_channel0.Init.Input.Pins = DFSDM_CHANNEL_SAME_CHANNEL_PINS;
-  hdfsdm1_channel0.Init.SerialInterface.Type = DFSDM_CHANNEL_SPI_RISING;
-  hdfsdm1_channel0.Init.SerialInterface.SpiClock = DFSDM_CHANNEL_SPI_CLOCK_EXTERNAL;
-  hdfsdm1_channel0.Init.Awd.FilterOrder = DFSDM_CHANNEL_FASTSINC_ORDER;
-  hdfsdm1_channel0.Init.Awd.Oversampling = 1;
-  hdfsdm1_channel0.Init.Offset = 0x00;
-  hdfsdm1_channel0.Init.RightBitShift = 0x00;
-  if (HAL_DFSDM_ChannelInit(&hdfsdm1_channel0) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN DFSDM1_Init 2 */
-  /* USER CODE END DFSDM1_Init 2 */
 
 }
 

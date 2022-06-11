@@ -151,7 +151,7 @@ typedef void (*Audio_CallbackTypeDef)(void);
              CONFIGURATION: Audio Driver Configuration parameters
 ------------------------------------------------------------------------------*/
 
-#define AUDIODATA_SIZE                      1   /* 16-bits audio data size */
+#define AUDIODATA_SIZE                      2   /* 16-bits audio data size */
 
 /* Audio status definition */
 #define AUDIO_OK                            0
@@ -179,7 +179,6 @@ typedef void (*Audio_CallbackTypeDef)(void);
   * @{
   */
 extern SAI_HandleTypeDef          BSP_AUDIO_hSai;
-extern DFSDM_Filter_HandleTypeDef BSP_AUDIO_hDfsdmLeftFilter;
 
 /**
  * @}

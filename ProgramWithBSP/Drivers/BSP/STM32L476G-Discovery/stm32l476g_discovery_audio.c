@@ -136,21 +136,6 @@ typedef struct
   Audio_CallbackTypeDef CbTransferComplete; /* pointer to the callback function invoked when ... */
 } AUDIO_OUT_TypeDef;
 
-typedef struct
-{
-  DFSDM_Channel_HandleTypeDef hDfsdmLeftChannel;  /* DFSDM channel handle used for left channel */
-  DMA_HandleTypeDef           hDmaDfsdmLeft;      /* DMA handle used for DFSDM regular conversions on left channel */
-  int32_t                    *LeftRecBuff;        /* Buffers for left samples */
-  uint32_t                Frequency;        /* Record Frequency */
-  uint32_t                BitResolution;    /* Record bit resolution */
-  uint32_t                ChannelNbr;       /* Record Channel Number */
-  uint16_t               *pRecBuf;          /* Pointer to record user buffer */
-  uint32_t                RecSize;          /* Size to record in mono, double size to record in stereo */
-  Audio_CallbackTypeDef       CbError;            /* pointer to the callback function invoked when a DMA transfer fails */
-  Audio_CallbackTypeDef       CbHalfTransfer;     /* pointer to the callback function invoked when half of the DMA transfer is completed */
-  Audio_CallbackTypeDef       CbTransferComplete; /* pointer to the callback function invoked when the DMA transfer is completed */
-} AUDIO_IN_TypeDef;
-
 /**
   * @}
   */
@@ -199,16 +184,7 @@ uint8_t Music_buffor[44144];
       : (__FREQUENCY__ == AUDIO_FREQUENCY_32K) ? 24 \
       : (__FREQUENCY__ == AUDIO_FREQUENCY_44K) ? 4  \
       : (__FREQUENCY__ == AUDIO_FREQUENCY_48K) ? 32 : 32  \
- 
-#define DFSDMFilterOrder(__FREQUENCY__) \
-        (__FREQUENCY__ == AUDIO_FREQUENCY_8K)  ? DFSDM_FILTER_SINC3_ORDER \
-      : (__FREQUENCY__ == AUDIO_FREQUENCY_11K) ? DFSDM_FILTER_SINC3_ORDER \
-      : (__FREQUENCY__ == AUDIO_FREQUENCY_16K) ? DFSDM_FILTER_SINC3_ORDER \
-      : (__FREQUENCY__ == AUDIO_FREQUENCY_22K) ? DFSDM_FILTER_SINC3_ORDER \
-      : (__FREQUENCY__ == AUDIO_FREQUENCY_32K) ? DFSDM_FILTER_SINC4_ORDER \
-      : (__FREQUENCY__ == AUDIO_FREQUENCY_44K) ? DFSDM_FILTER_SINC3_ORDER  \
-      : (__FREQUENCY__ == AUDIO_FREQUENCY_48K) ? DFSDM_FILTER_SINC4_ORDER : DFSDM_FILTER_SINC5_ORDER  \
- 
+
 #define DFSDMRightBitShift(__FREQUENCY__) \
         (__FREQUENCY__ == AUDIO_FREQUENCY_8K)  ? 6 \
       : (__FREQUENCY__ == AUDIO_FREQUENCY_11K) ? 6 \
@@ -232,8 +208,6 @@ uint8_t Music_buffor[44144];
 /* Audio output context information */
 static AUDIO_OUT_TypeDef hAudioOut;
 
-/* Audio input context information */
-static AUDIO_IN_TypeDef hAudioIn;
 
 /* SAI DMA handle */
 static DMA_HandleTypeDef hDmaSai;
@@ -248,11 +222,6 @@ static DMA_HandleTypeDef hDmaSai;
 /* SAIx handle */
 SAI_HandleTypeDef               BSP_AUDIO_hSai;
 
-/* DFSDM filter handle */
-DFSDM_Filter_HandleTypeDef      BSP_AUDIO_hDfsdmLeftFilter;
-/**
-  * @}
-  */
 
 /* Private function prototypes -----------------------------------------------*/
 /** @defgroup STM32L476G_DISCOVERY_AUDIO_Private_Functions Private Functions
@@ -261,8 +230,6 @@ DFSDM_Filter_HandleTypeDef      BSP_AUDIO_hDfsdmLeftFilter;
 static void    AUDIO_CODEC_Reset(void);
 static uint8_t AUDIO_SAIx_Init(uint32_t AudioFreq);
 static uint8_t AUDIO_SAIx_DeInit(void);
-static uint8_t AUDIO_DFSDMx_Init(uint32_t AudioFreq);
-static uint8_t AUDIO_DFSDMx_DeInit(void);
 static uint8_t AUDIO_SAIPLLConfig(uint32_t AudioFreq);
 /**
   * @}
@@ -677,261 +644,7 @@ void HAL_SAI_ErrorCallback(SAI_HandleTypeDef *hsai)
   }
 }
 
-/**
-  * @}
-  */
 
-/** @addtogroup STM32L476G_EVAL_AUDIO_Exported_Functions
-  * @{
-  */
-
-/**
-  * @brief  Initializes micropone related peripherals.
-  * @note   This function assumes that the SAI input clock (through PLL_M)
-  *         is already configured and ready to be used.
-  * @param  AudioFreq: Audio frequency to be configured for the SAI peripheral.
-  * @param  BitRes: Audio frequency to be configured for the SAI peripheral.
-  * @param  ChnlNbr: Audio frequency to be configured for the SAI peripheral.
-  * @retval BSP AUDIO status
-  */
-uint8_t BSP_AUDIO_IN_Init(uint32_t AudioFreq, uint32_t BitRes, uint32_t ChnlNbr)
-{
-  /* Update the audio input context */
-  hAudioIn.Frequency          = AudioFreq;
-  hAudioIn.BitResolution      = BitRes;
-  hAudioIn.ChannelNbr         = ChnlNbr;
-  hAudioIn.CbError            = (Audio_CallbackTypeDef)NULL;
-  hAudioIn.CbHalfTransfer     = (Audio_CallbackTypeDef)NULL;
-  hAudioIn.CbTransferComplete = (Audio_CallbackTypeDef)NULL;
-
-  /* Configure the SAI PLL according to the requested audio frequency */
-  if (AUDIO_SAIPLLConfig(AudioFreq) != AUDIO_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /* Initializes the Digital Filter for Sigma-Delta Modulators interface */
-  if (AUDIO_DFSDMx_Init(AudioFreq) != AUDIO_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  return AUDIO_OK;
-}
-
-/**
-  * @brief  De-Initializes microphone related peripherals.
-  * @retval BSP AUDIO status
-
-  */
-uint8_t BSP_AUDIO_IN_DeInit(void)
-{
-  /* De-initializes the Digital Filter for Sigma-Delta Modulators interface */
-  if (AUDIO_DFSDMx_DeInit() != AUDIO_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /* Reset the audio input context */
-  memset(&hAudioIn, 0, sizeof(hAudioIn));
-
-  return AUDIO_OK;
-}
-
-/**
-  * @brief  Starts audio recording.
-  * @param  pbuf: Main buffer pointer for the recorded data storing
-  * @param  size: Current size of the recorded buffer
-  * @note   The Right channel is start at first with synchro on start of Left channel
-  * @retval BSP AUDIO status
-  */
-uint8_t BSP_AUDIO_IN_Record(uint16_t *pbuf, uint32_t size)
-{
-  hAudioIn.pRecBuf = pbuf;
-  hAudioIn.RecSize = size;
-
-  /* Allocate hAudioIn.LeftRecBuff buffer */
-#if defined(BSP_AUDIO_USE_RTOS)
-  hAudioIn.LeftRecBuff  = (int32_t *)k_malloc(size * sizeof(int32_t));
-#else
-  hAudioIn.LeftRecBuff  = (int32_t *)malloc(size * sizeof(int32_t));
-#endif
-  if (hAudioIn.LeftRecBuff == NULL)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /* Call the Media layer start function for left channel */
-  if (HAL_DFSDM_FilterRegularStart_DMA(&BSP_AUDIO_hDfsdmLeftFilter,
-                                       (int32_t *)hAudioIn.LeftRecBuff,
-                                       (hAudioIn.RecSize / DEFAULT_AUDIO_IN_CHANNEL_NBR)) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  return AUDIO_OK;
-}
-
-/**
-  * @brief  Updates the audio frequency.
-  * @param  AudioFreq: Audio frequency used to record the audio stream.
-  * @note   This API should be called after the BSP_AUDIO_IN_Init() to adjust the
-  *         audio frequency.
-  * @retval BSP AUDIO status
-  */
-uint8_t BSP_AUDIO_IN_SetFrequency(uint32_t AudioFreq)
-{
-  /* Configure the SAI PLL according to the requested audio frequency */
-  if (AUDIO_SAIPLLConfig(AudioFreq) != AUDIO_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /* De-initializes the Digital Filter for Sigma-Delta Modulators interface */
-  if (AUDIO_DFSDMx_DeInit() != AUDIO_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /* Initializes the Digital Filter for Sigma-Delta Modulators interface */
-  if (AUDIO_DFSDMx_Init(AudioFreq) != AUDIO_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  return AUDIO_OK;
-}
-
-/**
-  * @brief  Regular conversion complete callback.
-  * @note   In interrupt mode, user has to read conversion value in this function
-            using HAL_DFSDM_FilterGetRegularValue.
-  * @param  hdfsdm_filter : DFSDM filter handle.
-  * @retval None
-  */
-void HAL_DFSDM_FilterRegConvCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter)
-{
-  uint32_t index;
-  uint32_t recbufsize = (hAudioIn.RecSize / DEFAULT_AUDIO_IN_CHANNEL_NBR);
-
-  for (index = (recbufsize / 2); index < recbufsize; index++)
-  {
-    hAudioIn.pRecBuf[index] = (uint16_t)(SaturaLH((hAudioIn.LeftRecBuff[index] >> 8), -32768, 32767));
-  }
-
-  /* Invoke the registered 'TransferComplete' function (if any) */
-  if (hAudioIn.CbTransferComplete != (Audio_CallbackTypeDef)NULL)
-  {
-    hAudioIn.CbTransferComplete();
-  }
-}
-
-/**
-  * @brief  Half regular conversion complete callback.
-  * @param  hdfsdm_filter : DFSDM filter handle.
-  * @retval None
-  */
-void HAL_DFSDM_FilterRegConvHalfCpltCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter)
-{
-  uint32_t index;
-  uint32_t recbufsize = (hAudioIn.RecSize / DEFAULT_AUDIO_IN_CHANNEL_NBR);
-
-
-  for (index = 0; index < (recbufsize / 2); index++)
-  {
-    hAudioIn.pRecBuf[index] = (uint16_t)(SaturaLH((hAudioIn.LeftRecBuff[index] >> 8), -32768, 32767));
-  }
-
-  /* Invoke the registered 'HalfTransfer' callback function (if any) */
-  if (hAudioIn.CbHalfTransfer != (Audio_CallbackTypeDef)NULL)
-  {
-    hAudioIn.CbHalfTransfer();
-  }
-}
-
-/**
-  * @brief  Error callback.
-  * @param  hdfsdm_filter : DFSDM filter handle.
-  * @retval None
-  */
-void HAL_DFSDM_FilterErrorCallback(DFSDM_Filter_HandleTypeDef *hdfsdm_filter)
-{
-  /* Invoke the registered 'ErrorCallback' callback function (if any) */
-  if (hAudioIn.CbError != (Audio_CallbackTypeDef)NULL)
-  {
-    hAudioIn.CbError();
-  }
-}
-
-/**
-  * @brief  Stops audio recording.
-  * @retval BSP AUDIO status
-  */
-uint8_t BSP_AUDIO_IN_Stop(void)
-{
-  /* Call the Media layer stop function for left channel */
-  if (HAL_DFSDM_FilterRegularStop_DMA(&BSP_AUDIO_hDfsdmLeftFilter) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /* Free hAudioIn.LeftRecBuff buffer */
-#if defined(BSP_AUDIO_USE_RTOS)
-  k_free((void *)hAudioIn.LeftRecBuff);
-#else
-  free((void *)hAudioIn.LeftRecBuff);
-#endif
-
-  return AUDIO_OK;
-}
-
-/**
-  * @brief  Pauses the audio file stream.
-  * @retval BSP AUDIO status
-  */
-uint8_t BSP_AUDIO_IN_Pause(void)
-{
-  /* Call the Media layer stop function */
-  if (HAL_DFSDM_FilterRegularStop_DMA(&BSP_AUDIO_hDfsdmLeftFilter) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  return AUDIO_OK;
-}
-
-/**
-  * @brief  Resumes the audio file stream.
-  * @retval BSP AUDIO status
-  */
-uint8_t BSP_AUDIO_IN_Resume(void)
-{
-  /* Call the Media layer start function for left channel */
-  if (HAL_DFSDM_FilterRegularStart_DMA(&BSP_AUDIO_hDfsdmLeftFilter,
-                                       (int32_t *)hAudioIn.LeftRecBuff,
-                                       (hAudioIn.RecSize / DEFAULT_AUDIO_IN_CHANNEL_NBR)) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  return AUDIO_OK;
-}
-
-/**
-  * @brief  register user callback functions
-  * @param  ErrorCallback: pointer to the error callback function
-  * @param  HalfTransferCallback: pointer to the half transfer callback function
-  * @param  TransferCompleteCallback: pointer to the transfer complete callback function
-  * @retval None
-  */
-void BSP_AUDIO_IN_RegisterCallbacks(Audio_CallbackTypeDef ErrorCallback,
-                                    Audio_CallbackTypeDef HalfTransferCallback,
-                                    Audio_CallbackTypeDef TransferCompleteCallback)
-{
-  hAudioIn.CbError            = ErrorCallback;
-  hAudioIn.CbHalfTransfer     = HalfTransferCallback;
-  hAudioIn.CbTransferComplete = TransferCompleteCallback;
-}
 /**
   * @}
   */
@@ -1061,154 +774,11 @@ static void AUDIO_CODEC_Reset(void)
   * @param  AudioFreq: Audio frequency to be used to set correctly the DFSDM peripheral.
   * @retval BSP AUDIO status
   */
-static uint8_t AUDIO_DFSDMx_Init(uint32_t AudioFreq)
-{
-  /*####CHANNEL 2####*/
-  hAudioIn.hDfsdmLeftChannel.Init.OutputClock.Activation   = ENABLE;
-  hAudioIn.hDfsdmLeftChannel.Init.OutputClock.Selection    = DFSDM_CHANNEL_OUTPUT_CLOCK_AUDIO;
-  /* Set the DFSDM clock OUT audio frequency configuration */
-  hAudioIn.hDfsdmLeftChannel.Init.OutputClock.Divider      = DFSDMClockDivider(AudioFreq);
-  hAudioIn.hDfsdmLeftChannel.Init.Input.Multiplexer        = DFSDM_CHANNEL_EXTERNAL_INPUTS;
-  hAudioIn.hDfsdmLeftChannel.Init.Input.DataPacking        = DFSDM_CHANNEL_STANDARD_MODE;
-  hAudioIn.hDfsdmLeftChannel.Init.Input.Pins               = DFSDM_CHANNEL_SAME_CHANNEL_PINS;
-  /* Request to sample stable data for LEFT micro on Rising edge */
-  hAudioIn.hDfsdmLeftChannel.Init.SerialInterface.Type     = DFSDM_CHANNEL_SPI_RISING;
-  hAudioIn.hDfsdmLeftChannel.Init.SerialInterface.SpiClock = DFSDM_CHANNEL_SPI_CLOCK_INTERNAL;
-  hAudioIn.hDfsdmLeftChannel.Init.Awd.FilterOrder          = DFSDM_CHANNEL_SINC1_ORDER;
-  hAudioIn.hDfsdmLeftChannel.Init.Awd.Oversampling         = 10;
-  hAudioIn.hDfsdmLeftChannel.Init.Offset                   = 0;
-  hAudioIn.hDfsdmLeftChannel.Init.RightBitShift            = DFSDMRightBitShift(AudioFreq);
-
-  hAudioIn.hDfsdmLeftChannel.Instance                      = DFSDM1_Channel2;
-
-  /* Init the DFSDM Channel */
-  if (HAL_DFSDM_ChannelInit(&hAudioIn.hDfsdmLeftChannel) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /*####FILTER 0####*/
-  BSP_AUDIO_hDfsdmLeftFilter.Init.RegularParam.Trigger         = DFSDM_FILTER_SW_TRIGGER;
-  BSP_AUDIO_hDfsdmLeftFilter.Init.RegularParam.FastMode        = ENABLE;
-  BSP_AUDIO_hDfsdmLeftFilter.Init.RegularParam.DmaMode         = ENABLE;
-  BSP_AUDIO_hDfsdmLeftFilter.Init.InjectedParam.Trigger        = DFSDM_FILTER_SW_TRIGGER;
-  BSP_AUDIO_hDfsdmLeftFilter.Init.InjectedParam.ScanMode       = DISABLE;
-  BSP_AUDIO_hDfsdmLeftFilter.Init.InjectedParam.DmaMode        = DISABLE;
-  BSP_AUDIO_hDfsdmLeftFilter.Init.InjectedParam.ExtTrigger     = DFSDM_FILTER_EXT_TRIG_TIM8_TRGO;
-  BSP_AUDIO_hDfsdmLeftFilter.Init.InjectedParam.ExtTriggerEdge = DFSDM_FILTER_EXT_TRIG_BOTH_EDGES;
-  BSP_AUDIO_hDfsdmLeftFilter.Init.FilterParam.SincOrder        = DFSDMFilterOrder(AudioFreq);
-  /* Set the DFSDM Filters Oversampling to have correct sample rate */
-  BSP_AUDIO_hDfsdmLeftFilter.Init.FilterParam.Oversampling     = DFSDMOverSampling(AudioFreq);
-  BSP_AUDIO_hDfsdmLeftFilter.Init.FilterParam.IntOversampling  = 1;
-
-  BSP_AUDIO_hDfsdmLeftFilter.Instance                          = AUDIO_DFSDMx_LEFT_FILTER;
-
-  /* Init the DFSDM Filter */
-  if (HAL_DFSDM_FilterInit(&BSP_AUDIO_hDfsdmLeftFilter) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /* Configure regular channel */
-  if (HAL_DFSDM_FilterConfigRegChannel(&BSP_AUDIO_hDfsdmLeftFilter,
-                                       DFSDM_CHANNEL_2,
-                                       DFSDM_CONTINUOUS_CONV_ON) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  return AUDIO_OK;
-}
 
 /**
   * @brief  De-initializes the Digital Filter for Sigma-Delta Modulators interface (DFSDM).
   * @retval BSP AUDIO status
   */
-static uint8_t AUDIO_DFSDMx_DeInit(void)
-{
-  /* De-initializes the DFSDM filters to allow access to DFSDM internal registers */
-  if (HAL_DFSDM_FilterDeInit(&BSP_AUDIO_hDfsdmLeftFilter) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /* De-initializes the DFSDM channels to allow access to DFSDM internal registers */
-  if (HAL_DFSDM_ChannelDeInit(&hAudioIn.hDfsdmLeftChannel) != HAL_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /* Disable DFSDM clock */
-  AUDIO_DFSDMx_CLK_DISABLE();
-
-  /* Disable SAIx PLL */
-  if (AUDIO_SAIx_PLL_DISABLE() != AUDIO_OK)
-  {
-    return AUDIO_ERROR;
-  }
-
-  /* DFSDM reset */
-  __HAL_RCC_DFSDM1_FORCE_RESET();
-  __HAL_RCC_DFSDM1_RELEASE_RESET();
-
-  return AUDIO_OK;
-}
-
-/**
-  * @brief  Initializes the DFSDM filter MSP.
-  * @param  hdfsdm_filter : DFSDM filter handle.
-  * @retval None
-  */
-void HAL_DFSDM_FilterMspInit(DFSDM_Filter_HandleTypeDef *hdfsdm_filter)
-{
-  /* Enable DFSDM clock */
-  AUDIO_DFSDMx_CLK_ENABLE();
-
-  /* Enable the DMA clock */
-  AUDIO_DFSDMx_DMAx_CLK_ENABLE();
-
-  /* Configure the hAudioIn.hDmaDfsdmLeft handle parameters */
-  hAudioIn.hDmaDfsdmLeft.Init.Request             = DMA_REQUEST_0;
-  hAudioIn.hDmaDfsdmLeft.Init.Direction           = DMA_PERIPH_TO_MEMORY;
-  hAudioIn.hDmaDfsdmLeft.Init.PeriphInc           = DMA_PINC_DISABLE;
-  hAudioIn.hDmaDfsdmLeft.Init.MemInc              = DMA_MINC_ENABLE;
-  hAudioIn.hDmaDfsdmLeft.Init.PeriphDataAlignment = AUDIO_DFSDMx_DMAx_PERIPH_DATA_SIZE;
-  hAudioIn.hDmaDfsdmLeft.Init.MemDataAlignment    = AUDIO_DFSDMx_DMAx_MEM_DATA_SIZE;
-  hAudioIn.hDmaDfsdmLeft.Init.Mode                = DMA_CIRCULAR;
-  hAudioIn.hDmaDfsdmLeft.Init.Priority            = DMA_PRIORITY_HIGH;
-
-  hAudioIn.hDmaDfsdmLeft.Instance               = AUDIO_DFSDMx_DMAx_LEFT_CHANNEL;
-
-  /* Associate the DMA handle */
-  __HAL_LINKDMA(hdfsdm_filter, hdmaReg, hAudioIn.hDmaDfsdmLeft);
-
-  /* Reset DMA handle state */
-  __HAL_DMA_RESET_HANDLE_STATE(&hAudioIn.hDmaDfsdmLeft);
-
-  /* Configure the DMA Channel */
-  HAL_DMA_Init(&hAudioIn.hDmaDfsdmLeft);
-
-  /* DMA IRQ Channel configuration */
-  HAL_NVIC_SetPriority(AUDIO_DFSDMx_DMAx_LEFT_IRQ, AUDIO_OUT_IRQ_PREPRIO, 0);
-  HAL_NVIC_EnableIRQ(AUDIO_DFSDMx_DMAx_LEFT_IRQ);
-}
-
-/**
- * @brief  De-initializes the DFSDM filter MSP.
- * @param  hdfsdm_filter : DFSDM filter handle.
- * @retval None
- */
-void HAL_DFSDM_FilterMspDeInit(DFSDM_Filter_HandleTypeDef *hdfsdm_filter)
-{
-  /* Disable DMA  Channel IRQ */
-  HAL_NVIC_DisableIRQ(AUDIO_DFSDMx_DMAx_LEFT_IRQ);
-
-  /* De-initialize the DMA Channel */
-  HAL_DMA_DeInit(&hAudioIn.hDmaDfsdmLeft);
-
-  /* Disable the DMA clock */
-  AUDIO_DFSDMx_DMAx_CLK_DISABLE();
-}
 
 /**
   * @brief  Configures the SAI PLL clock according to the required audio frequency.
