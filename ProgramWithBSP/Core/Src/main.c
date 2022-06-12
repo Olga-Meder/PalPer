@@ -39,6 +39,8 @@
 
 uint8_t qspi_aTxBuffer[BUFFER_SIZE];
 uint8_t qspi_aRxBuffer[4];
+
+int tab[4][4] = {{0,1,2,3}, {8,5,6,7}, {13,9,10,11}, {15,16,14,17}};
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -141,16 +143,6 @@ static void MX_ADC1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int _write(int file, char *ptr, int len) {
-	HAL_UART_Transmit(&huart3, (uint8_t*)ptr, len, 50);
-	return len;
-}
-
-int __io_putchar(int ch)
-{
-    HAL_UART_Transmit(&huart3, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
-    return 1;
-}
 
 /* USER CODE END 0 */
 
@@ -227,154 +219,74 @@ int main(void)
 	  Error_Handler();
   }
 
-  int flag = 1;
   int flag2 = 1;
   uint32_t count = 0;
+  char buff[6];
+  sprintf(buff,"SEK %i",1);
+  BSP_LCD_GLASS_DisplayString(buff);
   HAL_ADC_Start(&hadc1);
-
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  //przyciski
-/*
-	  if(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin) && flag){
-		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * count));
-		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
-		  HAL_Delay(500);
-		  BSP_AUDIO_OUT_Stop(2);
+
+	  if(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin) && flag2)
+	  {
 		  count++;
-		  flag = 0;
-		  count = count % 18;
+		  flag2 = 0;
+		  count = count % 4;
+		  sprintf(buff,"SEK %i",count+1);
+		  BSP_LCD_GLASS_DisplayString(buff);
 	  }
-	  if(!(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin))){
-		  flag = 1;
+	  if(!(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin)))
+	  {
+		  flag2 = 1;
 	  }
-*/
+
 	  if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
 	  {
 		  PomiarADC = HAL_ADC_GetValue(&hadc1);
-//		  char buffor[8];
-//		  sprintf(buffor,"%i",PomiarADC);
-//		  BSP_LCD_GLASS_Clear();
-//		  BSP_LCD_GLASS_DisplayString(buffor);
-//		  HAL_Delay(200);
-
-//		  HAL_ADC_Start(&hadc1);
-
-	  //////////////////////////////////////////////////////////////////////////////////////
-
-	  if(PomiarADC == 7 || PomiarADC == 15 || PomiarADC == 31)
-	  {
-		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+17)));  //congahigh
-		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
-		  HAL_Delay(150);
-		  BSP_AUDIO_OUT_Stop(2);
-	  }
-	  else if(PomiarADC == 63)
-	  {
-		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+12)));
-		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
-		  HAL_Delay(150);
-		  BSP_AUDIO_OUT_Stop(2);
-	  }
-	  else if(PomiarADC == 192)
-	  {
-		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+15)));  //congalow
-		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
-		  HAL_Delay(150);
-		  BSP_AUDIO_OUT_Stop(2);
-	  }
-	  else if(PomiarADC == 224 || PomiarADC == 240)
-	  {
-		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+4)));
-		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
-		  HAL_Delay(150);
-		  BSP_AUDIO_OUT_Stop(2);
-	  }
-	  HAL_ADC_Start(&hadc1);
-
-
-	  }
-	  //////////////////////////////////////////////////////////////////////////////////////
-		  /*
-	  }
-
-		  if(PomiarADC >  5 && PomiarADC <= 85)
+		  //SEKTOR 1
+		  if(PomiarADC == 7 || PomiarADC == 15 || PomiarADC == 31)
 		  {
 			  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-			  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+17)));  //congahigh
+			  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (tab[count][0])));
+			  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+			  HAL_Delay(150);
+			  BSP_AUDIO_OUT_Stop(2);
+		  }
+		  //SEKTOR 2
+		  else if(PomiarADC == 63)
+		  {
+			  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+			  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (tab[count][1])));
+			  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+			  HAL_Delay(150);
+			  BSP_AUDIO_OUT_Stop(2);
+		  }
+		  //SEKTOR 3
+		  else if(PomiarADC == 192)
+		  {
+			  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+			  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (tab[count][2])));  //congalow
+			  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+			  HAL_Delay(150);
+			  BSP_AUDIO_OUT_Stop(2);
+		  }
+		  //SEKTOR 4
+		  else if(PomiarADC == 224 || PomiarADC == 240)
+		  {
+			  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+			  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (tab[count][3])));
 			  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
 			  HAL_Delay(150);
 			  BSP_AUDIO_OUT_Stop(2);
 
 		  }
-		  if(PomiarADC > 85 && PomiarADC <= 170)
-		  {
-		  	  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-		  	  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+15))); //congalow
-		  	  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
-		  	  HAL_Delay(150);
-		  	  BSP_AUDIO_OUT_Stop(2);
-
-		  }
-		  else if(PomiarADC > 170)
-		  {
-		  	  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-		  	  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+4))); //hihat
-		  	  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
-		  	  HAL_Delay(150);
-		  	  BSP_AUDIO_OUT_Stop(2);
-
-		  }
-//		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
 		  HAL_ADC_Start(&hadc1);
 	  }
-	  */
-//      if(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin) && flag2){
-//          count++;
-//          flag2 = 0;
-//          count = count % 9;
-//      }
-//      if(!(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin)))
-//          flag2 = 1;
-//
-//
-//      if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
-//          PomiarADC = HAL_ADC_GetValue(&hadc1);
-//
-//          if(PomiarADC < 5) {
-//              flag = 1;
-//          }
-//          else if(PomiarADC > 5 && PomiarADC < 80 ) {
-//              RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-//              pAudioSample = (uint16_t ) (WRITE_READ_ADDR+(RozmiarSekcji*((2*count)+1)));
-//              BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
-//              HAL_Delay(300);
-//              BSP_AUDIO_OUT_Stop(2);
-//              flag = 1;
-//
-//          }
-//          else if(PomiarADC > 80) {
-//              RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
-//              pAudioSample = (uint16_t) (WRITE_READ_ADDR+(RozmiarSekcji*(2*count)));
-//              BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
-//              HAL_Delay(300);
-//              BSP_AUDIO_OUT_Stop(2);
-//              flag = 1;
-//          }
-//
-//          HAL_ADC_Start(&hadc1);
-//      }
-
   }
-
   /* USER CODE END 3 */
 }
 
