@@ -25,8 +25,9 @@
 #include "../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_glass_lcd.h"
 #include "../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_qspi.h"
 #include "../../../Drivers/BSP/STM32L476G-Discovery/stm32l476g_discovery_audio.h"
-#include "stdio.h"
 #include "string.h"
+#include <stdio.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -115,8 +116,8 @@ UART_HandleTypeDef huart3;
 /* USER CODE BEGIN PV */
 
 
-uint8_t PomiarADC;
-
+uint32_t PomiarADC;
+volatile uint8_t adc;
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 	PomiarADC = HAL_ADC_GetValue(&hadc1); // Pobranie zmierzonej wartosci
 }
@@ -140,6 +141,17 @@ static void MX_ADC1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+int _write(int file, char *ptr, int len) {
+	HAL_UART_Transmit(&huart3, (uint8_t*)ptr, len, 50);
+	return len;
+}
+
+int __io_putchar(int ch)
+{
+    HAL_UART_Transmit(&huart3, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
+    return 1;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -162,7 +174,7 @@ int main(void)
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* Configure the peripherals common clocks */
+/* Configure the peripherals common clocks */
   PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
@@ -180,7 +192,7 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   BSP_LCD_GLASS_Init();
-
+  HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -200,7 +212,7 @@ int main(void)
   }
 
   if(BSP_AUDIO_OUT_Init(2,  // Słuchawki
-                        100, // %głośności
+                        80, // %głośności
                         44100) != 0)  // częstotliwość
   {
 		  Error_Handler();
@@ -210,7 +222,7 @@ int main(void)
               	  	  	  	  	  NULL,
                                   AudioPlay_TransferComplete_CallBack);
 
-  if(BSP_AUDIO_OUT_SetVolume(100) != 0)
+  if(BSP_AUDIO_OUT_SetVolume(80) != 0)
   {
 	  Error_Handler();
   }
@@ -222,10 +234,11 @@ int main(void)
 
   while (1)
   {
-	/* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
+	  //przyciski
+/*
 	  if(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin) && flag){
 		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
 		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * count));
@@ -239,8 +252,129 @@ int main(void)
 	  if(!(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin))){
 		  flag = 1;
 	  }
+*/
+	  if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK)
+	  {
+		  PomiarADC = HAL_ADC_GetValue(&hadc1);
+//		  char buffor[8];
+//		  sprintf(buffor,"%i",PomiarADC);
+//		  BSP_LCD_GLASS_Clear();
+//		  BSP_LCD_GLASS_DisplayString(buffor);
+//		  HAL_Delay(200);
+
+//		  HAL_ADC_Start(&hadc1);
+
+	  //////////////////////////////////////////////////////////////////////////////////////
+
+	  if(PomiarADC == 7 || PomiarADC == 15 || PomiarADC == 31)
+	  {
+		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+17)));  //congahigh
+		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+		  HAL_Delay(150);
+		  BSP_AUDIO_OUT_Stop(2);
+	  }
+	  else if(PomiarADC == 63)
+	  {
+		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+12)));
+		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+		  HAL_Delay(150);
+		  BSP_AUDIO_OUT_Stop(2);
+	  }
+	  else if(PomiarADC == 192)
+	  {
+		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+15)));  //congalow
+		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+		  HAL_Delay(150);
+		  BSP_AUDIO_OUT_Stop(2);
+	  }
+	  else if(PomiarADC == 224 || PomiarADC == 240)
+	  {
+		  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+		  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+4)));
+		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+		  HAL_Delay(150);
+		  BSP_AUDIO_OUT_Stop(2);
+	  }
+	  HAL_ADC_Start(&hadc1);
+
+
+	  }
+	  //////////////////////////////////////////////////////////////////////////////////////
+		  /*
+	  }
+
+		  if(PomiarADC >  5 && PomiarADC <= 85)
+		  {
+			  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+			  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+17)));  //congahigh
+			  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+			  HAL_Delay(150);
+			  BSP_AUDIO_OUT_Stop(2);
+
+		  }
+		  if(PomiarADC > 85 && PomiarADC <= 170)
+		  {
+		  	  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+		  	  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+15))); //congalow
+		  	  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+		  	  HAL_Delay(150);
+		  	  BSP_AUDIO_OUT_Stop(2);
+
+		  }
+		  else if(PomiarADC > 170)
+		  {
+		  	  RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+		  	  pAudioSample = (uint16_t *) (WRITE_READ_ADDR+(RozmiarSekcji * (count+4))); //hihat
+		  	  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+		  	  HAL_Delay(150);
+		  	  BSP_AUDIO_OUT_Stop(2);
+
+		  }
+//		  BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+		  HAL_ADC_Start(&hadc1);
+	  }
+	  */
+//      if(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin) && flag2){
+//          count++;
+//          flag2 = 0;
+//          count = count % 9;
+//      }
+//      if(!(HAL_GPIO_ReadPin(JOY_CENTER_GPIO_Port,JOY_CENTER_Pin)))
+//          flag2 = 1;
+//
+//
+//      if (HAL_ADC_PollForConversion(&hadc1, 10) == HAL_OK) {
+//          PomiarADC = HAL_ADC_GetValue(&hadc1);
+//
+//          if(PomiarADC < 5) {
+//              flag = 1;
+//          }
+//          else if(PomiarADC > 5 && PomiarADC < 80 ) {
+//              RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+//              pAudioSample = (uint16_t ) (WRITE_READ_ADDR+(RozmiarSekcji*((2*count)+1)));
+//              BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+//              HAL_Delay(300);
+//              BSP_AUDIO_OUT_Stop(2);
+//              flag = 1;
+//
+//          }
+//          else if(PomiarADC > 80) {
+//              RemainingAudioSamplesNb = (uint32_t)(AUDIO_FILE_SIZE / 2);
+//              pAudioSample = (uint16_t) (WRITE_READ_ADDR+(RozmiarSekcji*(2*count)));
+//              BSP_AUDIO_OUT_Play(pAudioSample, RemainingAudioSamplesNb);
+//              HAL_Delay(300);
+//              BSP_AUDIO_OUT_Stop(2);
+//              flag = 1;
+//          }
+//
+//          HAL_ADC_Start(&hadc1);
+//      }
 
   }
+
   /* USER CODE END 3 */
 }
 
@@ -371,7 +505,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_8;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_247CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_92CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -647,11 +781,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(AUDIO_RST_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : JOY_CENTER_Pin */
-  GPIO_InitStruct.Pin = JOY_CENTER_Pin;
+  /*Configure GPIO pins : JOY_CENTER_Pin DIGITIZER_IN_Y2_Pin */
+  GPIO_InitStruct.Pin = JOY_CENTER_Pin|DIGITIZER_IN_Y2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(JOY_CENTER_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : DIGITIZER_OUT_X1_Pin */
   GPIO_InitStruct.Pin = DIGITIZER_OUT_X1_Pin;
@@ -659,12 +793,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(DIGITIZER_OUT_X1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : DIGITIZER_IN_Y2_Pin */
-  GPIO_InitStruct.Pin = DIGITIZER_IN_Y2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(DIGITIZER_IN_Y2_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : DIGITIZER_IN_X2_Pin */
   GPIO_InitStruct.Pin = DIGITIZER_IN_X2_Pin;

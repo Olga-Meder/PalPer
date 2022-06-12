@@ -65,8 +65,8 @@ all: main-build
 main-build: ProgramWithBSP.elf secondary-outputs
 
 # Tool invocations
-ProgramWithBSP.elf ProgramWithBSP.map: $(OBJS) $(USER_OBJS) C:\Users\tomas\STM32CubeIDE\workspace_1.9.0\ProgramWithBSP\STM32L476VGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "ProgramWithBSP.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\tomas\STM32CubeIDE\workspace_1.9.0\ProgramWithBSP\STM32L476VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ProgramWithBSP.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+ProgramWithBSP.elf ProgramWithBSP.map: $(OBJS) $(USER_OBJS) C:\Users\admin\Desktop\Uczelnia\semestr_6\SR\PalPer-main\ProgramWithBSP\STM32L476VGTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "ProgramWithBSP.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\admin\Desktop\Uczelnia\semestr_6\SR\PalPer-main\ProgramWithBSP\STM32L476VGTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ProgramWithBSP.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
